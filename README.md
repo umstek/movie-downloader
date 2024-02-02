@@ -18,6 +18,8 @@ To run:
 bun run cli.ts
 ```
 
+[Screencast from 2024-02-02 20-47-31.webm](https://github.com/umstek/movie-downloader/assets/7861481/f73818e7-f115-45dc-8724-6780f9c3925b)
+
 This doesn't download anything automatically yet, but helps you find the
 movies/tv series and download links. Find them in `data/sources` and use your
 favorite download manager, maybe a player, or a tool like `yt-dlp` to download
