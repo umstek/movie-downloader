@@ -1,0 +1,21 @@
+{
+  "name": "movie-downloader",
+  "module": "index.ts",
+  "type": "module",
+  "scripts": {
+    "dev": "bun cli.ts",
+    "bundle": "bun build ./cli.ts --compile --outfile build/movie-downloader"
+  },
+  "devDependencies": {
+    "@total-typescript/ts-reset": "^0.5.1",
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "@movie-web/providers": "^2.1.1",
+    "enquirer": "^2.4.1",
+    "filenamify": "^6.0.0"
+  }
+}
