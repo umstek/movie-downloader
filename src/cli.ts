@@ -1,34 +1,32 @@
-import enquirer from "enquirer";
+import prompts from "prompts";
 import filenamify from "filenamify";
 
 import {
   search,
-  type TVResult,
   getDetails,
   type SearchResultsPage,
   type TV,
   type Movie,
-} from "../src/tmdb";
-import { findDownloadSources } from "../src/mw";
-import { viaPersistence } from "./persistence";
+} from "./tmdb";
+import { findDownloadSources } from "./mw";
+import { save, viaPersistence } from "./persistence";
 import { configPrompt } from "./prompts/configPrompt";
+import type { MovieJob, TVJob } from "./jobs";
 
 const config = await viaPersistence("./data/config.json", configPrompt);
 
-console.log(config);
-
-const { kind, query } = await enquirer.prompt<{
-  kind: "movie" | "tv";
-  query: string;
-}>([
+const { kind, query }: { kind: "movie" | "tv"; query: string } = await prompts([
   {
     type: "select",
     name: "kind",
     message: "What do you want to download?",
-    choices: ["movie", "tv"],
+    choices: [
+      { title: "a movie", value: "movie" },
+      { title: "a tv show / seasons / episodes", value: "tv" },
+    ],
   },
   {
-    type: "input",
+    type: "text",
     name: "query",
     message: "Enter the search query:",
   },
@@ -41,8 +39,7 @@ let searchResponse = await viaPersistence<SearchResultsPage | undefined>(
 
 const movieOrTvChoices = searchResponse?.results.map((result) => {
   return {
-    name: result.kind === "tv" ? result.name : result.title,
-    message:
+    title:
       result.kind === "tv"
         ? `${result.name}${
             result.name === result.original_name
@@ -54,17 +51,18 @@ const movieOrTvChoices = searchResponse?.results.map((result) => {
               ? ""
               : ` = ${result.original_title}`
           } (${result.release_date})`,
-    hint: result.overview,
-    value: result, // [enquirer bug 1], so shows [object Object]
+    description: result.overview,
+    value: result,
   };
 });
 
-const { choice } = await enquirer.prompt<{ choice: TVResult }>({
-  type: "autocomplete",
-  name: "choice",
-  message: `Which item would you like to download?`,
-  choices: movieOrTvChoices,
-});
+const { choice }: { choice: SearchResultsPage["results"][number] } =
+  await prompts({
+    type: "autocomplete",
+    name: "choice",
+    message: `Which item would you like to download?`,
+    choices: movieOrTvChoices,
+  });
 
 let detailsResponse = await viaPersistence<TV | Movie | undefined>(
   generateDetailsFilePath(kind, choice.id),
@@ -76,6 +74,21 @@ if (!detailsResponse) {
 
 if (detailsResponse.kind === "movie") {
   const movie = detailsResponse as Movie;
+
+  const jobName = `${movie.title} at ${new Date().toISOString()}`;
+  const movieJob: MovieJob = {
+    name: jobName,
+    kind: "movie",
+    query,
+    tmdbId: movie.id,
+  };
+  await save(
+    `./data/jobs/${filenamify(jobName, {
+      maxLength: 100,
+      replacement: "-",
+    })}.json`,
+    movieJob
+  );
 
   const releaseYear = Number.parseInt(movie.release_date.slice(0, 4));
   const sources = await viaPersistence<
@@ -89,59 +102,62 @@ if (detailsResponse.kind === "movie") {
     })
   );
 
-  console.log(`Located movie`);
+  if (sources) {
+    console.log(`Located movie`);
+  } else {
+    console.log(`Unable to locate movie`);
+  }
 }
 
 if (detailsResponse.kind === "tv") {
   const tv = detailsResponse as TV;
 
-  const { seasonNos } = await enquirer.prompt<{
-    seasonNos: number[];
-  }>({
+  const { seasons }: { seasons: TV["seasons"] } = await prompts({
     type: "multiselect",
-    name: "seasonNos",
+    name: "seasons",
     message: `Which seasons would you like to download?`,
     choices: tv.seasons.map((season) => {
       return {
-        name: season.season_number.toFixed(0),
-        message: `${season.season_number}: ${season.name} (${season.air_date})`,
-        hint: season.overview,
-        value: season.season_number,
-        // XXX [enquirer bug 2], ignores value altogether and uses name
+        title: `${season.season_number}: ${season.name} (${season.air_date})`,
+        description: season.overview,
+        value: season,
       };
     }),
   });
 
-  const episodes = await enquirer.prompt<{
-    [key: `season-${number}`]: number[];
-  }>(
-    seasonNos
-      .map((seasonNo) => {
-        const season = (tv as TV).seasons.find(
-          // XXX handle [enquirer bug 2]
-          (season) => season.season_number == seasonNo
-        );
-        if (!season) {
-          return undefined;
-        }
+  const episodes = await prompts(
+    seasons.map((season) => {
+      return {
+        type: "multiselect",
+        name: `season-${season.season_number}`,
+        message: `Which episodes would you like to download for ${season.name} (${season.season_number})?`,
+        choices: Array.from(
+          { length: season.episode_count },
+          (_, i) => i + 1
+        ).map((episodeNo) => {
+          return {
+            title: `Episode ${episodeNo}`,
+            value: episodeNo,
+          };
+        }),
+      };
+    })
+  );
 
-        return {
-          type: "multiselect",
-          name: `season-${seasonNo}`,
-          message: `Which episodes would you like to download for ${season.name} (${season.season_number})?`,
-          choices: Array.from(
-            { length: season.episode_count },
-            (_, i) => i + 1
-          ).map((episodeNo) => {
-            return {
-              name: episodeNo.toString(),
-              message: `Episode ${episodeNo}`,
-              value: episodeNo,
-            };
-          }),
-        };
-      })
-      .filter(Boolean)
+  const jobName = `${tv.name} at ${new Date().toISOString()}`;
+  const tvJob: TVJob = {
+    name: jobName,
+    kind: "tv",
+    query,
+    tmdbId: tv.id,
+    episodes,
+  };
+  await save(
+    `./data/jobs/${filenamify(jobName, {
+      maxLength: 100,
+      replacement: "-",
+    })}.json`,
+    tvJob
   );
 
   for (const [seasonStr, episodeNos] of Object.entries(episodes)) {
