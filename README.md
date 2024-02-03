@@ -15,7 +15,7 @@ bun install
 To run:
 
 ```bash
-bun run cli.ts
+bun run ./src/cli.ts
 ```
 
 [Screencast from 2024-02-02 20-47-31.webm](https://github.com/umstek/movie-downloader/assets/7861481/f73818e7-f115-45dc-8724-6780f9c3925b)

@@ -3,8 +3,8 @@
   "module": "index.ts",
   "type": "module",
   "scripts": {
-    "dev": "bun cli.ts",
-    "bundle": "bun build ./cli.ts --compile --outfile build/movie-downloader"
+    "dev": "bun ./src/cli.ts",
+    "bundle": "bun build ./src/cli.ts --compile --outfile build/movie-downloader"
   },
   "devDependencies": {
     "@total-typescript/ts-reset": "^0.5.1",
