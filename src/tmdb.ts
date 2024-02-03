@@ -45,19 +45,19 @@ export interface SearchResultsPage {
 }
 
 export async function search({
-  type,
+  kind,
   query,
 }: {
-  type: "movie" | "tv";
+  kind: "movie" | "tv";
   query: string;
 }) {
-  const url = `${baseUrl}/search/${type}?query=${encodeURIComponent(query)}`;
+  const url = `${baseUrl}/search/${kind}?query=${encodeURIComponent(query)}`;
 
   try {
     const res = await fetch(url, commonOptions);
     const json = (await res.json()) as SearchResultsPage;
     json.results.forEach((result) => {
-      result.kind = type;
+      result.kind = kind;
     });
 
     return json;
@@ -193,19 +193,19 @@ export interface TV extends MediaItem {
 }
 
 export async function getDetails({
-  type,
+  kind,
   id,
 }: {
-  type: "movie" | "tv";
+  kind: "movie" | "tv";
   id: number;
 }) {
-  const url = `${baseUrl}/${type}/${id}`;
+  const url = `${baseUrl}/${kind}/${id}`;
 
   try {
     const res = await fetch(url, commonOptions);
     const json = (await res.json()) as Movie | TV;
 
-    return { ...json, kind: type } as Movie | TV;
+    return { ...json, kind: kind } as Movie | TV;
   } catch (err) {
     console.error("error:" + err);
   }

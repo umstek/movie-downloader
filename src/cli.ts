@@ -11,14 +11,19 @@ import {
 } from "../src/tmdb";
 import { findDownloadSources } from "../src/mw";
 import { viaPersistence } from "./persistence";
+import { configPrompt } from "./prompts/configPrompt";
 
-const { type, query } = await enquirer.prompt<{
-  type: "movie" | "tv";
+const config = await viaPersistence("./data/config.json", configPrompt);
+
+console.log(config);
+
+const { kind, query } = await enquirer.prompt<{
+  kind: "movie" | "tv";
   query: string;
 }>([
   {
     type: "select",
-    name: "type",
+    name: "kind",
     message: "What do you want to download?",
     choices: ["movie", "tv"],
   },
@@ -29,13 +34,9 @@ const { type, query } = await enquirer.prompt<{
   },
 ]);
 
-const searchFilePath = `data/search/${type}/${filenamify(query, {
-  maxLength: 100,
-  replacement: "-",
-})}.json`;
 let searchResponse = await viaPersistence<SearchResultsPage | undefined>(
-  searchFilePath,
-  () => search({ type, query })
+  generateSearchFilePath(kind, query),
+  () => search({ kind, query })
 );
 
 const movieOrTvChoices = searchResponse?.results.map((result) => {
@@ -65,10 +66,9 @@ const { choice } = await enquirer.prompt<{ choice: TVResult }>({
   choices: movieOrTvChoices,
 });
 
-const detailsFilePath = `data/details/${type}/${choice.id}.json`;
 let detailsResponse = await viaPersistence<TV | Movie | undefined>(
-  detailsFilePath,
-  () => getDetails({ type, id: choice.id })
+  generateDetailsFilePath(kind, choice.id),
+  () => getDetails({ kind, id: choice.id })
 );
 if (!detailsResponse) {
   throw new Error("Unable to get details!");
@@ -77,11 +77,10 @@ if (!detailsResponse) {
 if (detailsResponse.kind === "movie") {
   const movie = detailsResponse as Movie;
 
-  const sourcesFilePath = `data/sources/${type}/${movie.id}.json`;
   const releaseYear = Number.parseInt(movie.release_date.slice(0, 4));
   const sources = await viaPersistence<
     Awaited<ReturnType<typeof findDownloadSources>>
-  >(sourcesFilePath, () =>
+  >(generateMovieSourceFilePath(kind, movie.id), () =>
     findDownloadSources({
       type: "movie",
       releaseYear: Number.isFinite(releaseYear) ? releaseYear : 0,
@@ -114,7 +113,7 @@ if (detailsResponse.kind === "tv") {
   });
 
   const episodes = await enquirer.prompt<{
-    [key: `episodes-${number}`]: number[];
+    [key: `season-${number}`]: number[];
   }>(
     seasonNos
       .map((seasonNo) => {
@@ -128,7 +127,7 @@ if (detailsResponse.kind === "tv") {
 
         return {
           type: "multiselect",
-          name: `episodes-${seasonNo}`,
+          name: `season-${seasonNo}`,
           message: `Which episodes would you like to download for ${season.name} (${season.season_number})?`,
           choices: Array.from(
             { length: season.episode_count },
@@ -145,14 +144,13 @@ if (detailsResponse.kind === "tv") {
       .filter(Boolean)
   );
 
-  for (const [episodesKey, episodeNos] of Object.entries(episodes)) {
-    const seasonNo = Number.parseInt(episodesKey.split("-")[1]);
+  for (const [seasonStr, episodeNos] of Object.entries(episodes)) {
+    const seasonNo = Number.parseInt(seasonStr.split("-")[1]);
     for (const episodeNo of episodeNos) {
-      const sourcesFilePath = `data/sources/${type}/${tv.id}/s${seasonNo}/e${episodeNo}.json`;
       const releaseYear = Number.parseInt(tv.first_air_date.slice(0, 4));
       const sources = await viaPersistence<
         Awaited<ReturnType<typeof findDownloadSources>>
-      >(sourcesFilePath, () =>
+      >(generateTvEpisodeSourceFilePath(kind, tv.id, seasonNo, episodeNo), () =>
         findDownloadSources({
           type: "show",
           releaseYear: Number.isFinite(releaseYear) ? releaseYear : 0,
@@ -175,4 +173,58 @@ if (detailsResponse.kind === "tv") {
       console.log(`Located S${seasonNo}E${episodeNo}`);
     }
   }
+}
+
+/**
+ * Generates a file path for storing search results for the given media kind and search query.
+ * The query is filenamified to create a safe filename.
+ *
+ * @param kind The media kind
+ * @param query The search query
+ */
+function generateSearchFilePath(kind: string, query: string): string {
+  return `data/search/${kind}/${filenamify(query, {
+    maxLength: 100,
+    replacement: "-",
+  })}.json`;
+}
+
+/**
+ * Generates the file path for the details of a specific item based on its kind and ID.
+ *
+ * @param kind the kind of the item
+ * @param id the ID of the item
+ * @return the file path for the details of the specified item
+ */
+function generateDetailsFilePath(kind: string, id: number): string {
+  return `data/details/${kind}/${id}.json`;
+}
+
+/**
+ * Generates the file path for the movie source based on the kind and movie ID.
+ *
+ * @param kind The kind of source (e.g. 'local', 'remote').
+ * @param movieId The ID of the movie.
+ * @return The file path for the movie source.
+ */
+function generateMovieSourceFilePath(kind: string, movieId: number): string {
+  return `data/sources/${kind}/${movieId}.json`;
+}
+
+/**
+ * Generates the file path for the source of a TV episode based on the kind, TV ID, season number, and episode number.
+ *
+ * @param kind the kind of TV episode source
+ * @param tvId the ID of the TV show
+ * @param seasonNo the season number of the TV show
+ * @param episodeNo the episode number of the TV show
+ * @return the file path for the TV episode source
+ */
+function generateTvEpisodeSourceFilePath(
+  kind: string,
+  tvId: number,
+  seasonNo: number,
+  episodeNo: number
+): string {
+  return `data/sources/${kind}/${tvId}/s${seasonNo}/e${episodeNo}.json`;
 }
