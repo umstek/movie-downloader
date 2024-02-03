@@ -16,6 +16,7 @@ export async function configPrompt() {
           },
           {
             title: "No, just display download links.",
+            description: "I'll use my favorite download tool.",
             value: false,
           },
         ],
