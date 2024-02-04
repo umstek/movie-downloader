@@ -108,12 +108,19 @@ async function downloadTV(job: TVJob) {
         continue;
       }
 
-      if (!config.download) {
-        if (sources.stream.type === "file") {
-          for (const [quality, { type, url }] of Object.entries(
-            sources.stream.qualities
-          )) {
+      if (sources.stream.type === "file") {
+        for (const [quality, { type, url }] of Object.entries(
+          sources.stream.qualities
+        )) {
+          if (!config.download) {
             console.log(`${quality} - ${type} - ${url}`);
+          } else if (quality == config.resolution) {
+            const proc = Bun.spawn({
+              cmd: [ytdlp, "-o", "downloads/%(title)s.%(ext)s", url],
+            });
+            const text = await new Response(proc.stdout).text();
+            console.log(text);
+            await proc.exited;
           }
         }
       }

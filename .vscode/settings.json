@@ -2,6 +2,7 @@
   "conventionalCommits.scopes": [
     "project",
     "readme",
-    "jobs"
+    "jobs",
+    "downloads"
   ]
 }

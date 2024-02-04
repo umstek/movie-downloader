@@ -22,25 +22,31 @@ import { download } from "./download";
 
 const config = await viaPersistence(getConfigPath(), configPrompt);
 
-const jobFileNames = await readdir(getJobsPath());
-const { jobFileName } = await prompts({
-  type: "select",
-  name: "jobFileName",
-  message: "Select a job to continue, Ctrl+C to create new one.",
-  choices: jobFileNames.map((jobFileName) => {
-    return {
-      title: jobFileName,
-      value: jobFileName,
-    };
-  }),
-});
+try {
+  const jobFileNames = await readdir(getJobsPath());
+  const { jobFileName } = await prompts({
+    type: "select",
+    name: "jobFileName",
+    message: "Select a job to continue, Ctrl+C to create new one.",
+    choices: jobFileNames.map((jobFileName) => {
+      return {
+        title: jobFileName,
+        value: jobFileName,
+      };
+    }),
+  });
 
-if (jobFileName) {
-  const job: MovieJob | TVJob = await Bun.file(
-    `data/jobs/${jobFileName}`
-  ).json();
-  await download(job);
-  process.exit(0);
+  if (jobFileName) {
+    const job: MovieJob | TVJob = await Bun.file(
+      `data/jobs/${jobFileName}`
+    ).json();
+    await download(job);
+    process.exit(0);
+  }
+} catch (error) {
+  if (error instanceof Error) {
+    console.error(error.message);
+  }
 }
 
 const { kind, query }: { kind: "movie" | "tv"; query: string } = await prompts([
