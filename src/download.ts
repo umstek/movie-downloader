@@ -173,6 +173,7 @@ async function downloadFileStream(stream: FileBasedStream, config: Config) {
       downloadsFolder,
       url,
       "--restrict-filenames",
+      "--write-info-json"
     ],
   });
   const text = await new Response(proc.stdout).text();
@@ -185,8 +186,8 @@ async function downloadFileStream(stream: FileBasedStream, config: Config) {
     (c) => c.language && languages.includes(c.language)
   );
   for (const caption of matchingCaptions) {
-    const captionsResponse = await fetch(caption.url);
     const captionsFilename = `${filename}.${caption.language}.${caption.type}`;
+    const captionsResponse = await fetch(caption.url);
     await Bun.write(`${downloadsFolder}/${captionsFilename}`, captionsResponse);
   }
 }
@@ -197,4 +198,13 @@ async function logFileStreamUrls(stream: FileBasedStream) {
   }
 }
 
-async function downloadHlsStream(stream: HlsBasedStream, config: Config) {}
+async function downloadHlsStream(stream: HlsBasedStream, config: Config) {
+  if (!config.download) {
+    logHlsStreamUrls(stream);
+    return;
+  }
+}
+
+async function logHlsStreamUrls(stream: HlsBasedStream) {
+  console.log(`${stream.playlist}`);
+}
