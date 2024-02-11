@@ -50,3 +50,5 @@ export async function configPrompt() {
 
   return { download, resolution };
 }
+
+export type Config = Awaited<ReturnType<typeof configPrompt>>;

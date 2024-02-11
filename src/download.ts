@@ -1,3 +1,9 @@
+import type {
+  FileBasedStream,
+  HlsBasedStream,
+  Qualities,
+  Stream,
+} from "@movie-web/providers";
 import type { MovieJob, TVJob } from "./jobs";
 import { findDownloadSources } from "./mw";
 import {
@@ -7,8 +13,18 @@ import {
   getConfigPath,
 } from "./paths";
 import { load, viaPersistence } from "./persistence";
-import { configPrompt } from "./prompts/configPrompt";
+import { configPrompt, type Config } from "./prompts/configPrompt";
 import type { Movie, TV } from "./tmdb";
+
+const qualitiesOrder: Qualities[] = [
+  "4k",
+  "1080",
+  "720",
+  "480",
+  "360",
+  "unknown",
+];
+const downloadsFolder = "./downloads";
 
 const bun = Bun.which("bun");
 let ytdlp =
@@ -108,22 +124,77 @@ async function downloadTV(job: TVJob) {
         continue;
       }
 
-      if (sources.stream.type === "file") {
-        for (const [quality, { type, url }] of Object.entries(
-          sources.stream.qualities
-        )) {
-          if (!config.download) {
-            console.log(`${quality} - ${type} - ${url}`);
-          } else if (quality == config.resolution) {
-            const proc = Bun.spawn({
-              cmd: [ytdlp, "-o", "downloads/%(title)s.%(ext)s", url],
-            });
-            const text = await new Response(proc.stdout).text();
-            console.log(text);
-            await proc.exited;
-          }
-        }
-      }
+      await downloadStream(sources.stream, config);
     }
   }
 }
+
+async function downloadStream(stream: Stream, config: Config) {
+  if (stream.type === "hls") {
+    await downloadHlsStream(stream, config);
+  } else if (stream.type === "file") {
+    await downloadFileStream(stream, config);
+  }
+}
+
+async function downloadFileStream(stream: FileBasedStream, config: Config) {
+  if (!config.download) {
+    logFileStreamUrls(stream);
+    return;
+  }
+
+  const expectedQuality = config.resolution as Qualities;
+  const betterQualities = qualitiesOrder
+    .slice(0, qualitiesOrder.indexOf(expectedQuality))
+    .reverse();
+  const worseQualities = qualitiesOrder.slice(
+    qualitiesOrder.indexOf(expectedQuality) + 1
+  );
+  const matchingQuality =
+    [expectedQuality, ...betterQualities, ...worseQualities].filter(
+      (q) => stream.qualities[q]
+    )[0] || "unknown";
+
+  const url = stream.qualities[matchingQuality]?.url;
+  if (!url) {
+    console.error(
+      `No matching download URLs found for ${config.resolution} or below.`
+    );
+    logFileStreamUrls(stream);
+    return;
+  }
+
+  const proc = Bun.spawn({
+    cmd: [
+      ytdlp,
+      "--print",
+      "filename",
+      "-P",
+      downloadsFolder,
+      url,
+      "--restrict-filenames",
+    ],
+  });
+  const text = await new Response(proc.stdout).text();
+  await proc.exited;
+  const filenameWithExt = text.trim();
+  const filename = filenameWithExt.slice(0, filenameWithExt.lastIndexOf("."));
+
+  const languages = ["en"];
+  const matchingCaptions = stream.captions.filter(
+    (c) => c.language && languages.includes(c.language)
+  );
+  for (const caption of matchingCaptions) {
+    const captionsResponse = await fetch(caption.url);
+    const captionsFilename = `${filename}.${caption.language}.${caption.type}`;
+    await Bun.write(`${downloadsFolder}/${captionsFilename}`, captionsResponse);
+  }
+}
+
+async function logFileStreamUrls(stream: FileBasedStream) {
+  for (const [quality, { type, url }] of Object.entries(stream.qualities)) {
+    console.log(`${quality} - ${type} - ${url}`);
+  }
+}
+
+async function downloadHlsStream(stream: HlsBasedStream, config: Config) {}
