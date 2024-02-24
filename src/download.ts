@@ -154,6 +154,7 @@ async function downloadFileStream(stream: FileBasedStream, config: Config) {
     [expectedQuality, ...betterQualities, ...worseQualities].filter(
       (q) => stream.qualities[q]
     )[0] || "unknown";
+  console.log("Quality matched:", matchingQuality);
 
   const url = stream.qualities[matchingQuality]?.url;
   if (!url) {
@@ -173,11 +174,13 @@ async function downloadFileStream(stream: FileBasedStream, config: Config) {
       downloadsFolder,
       url,
       "--restrict-filenames",
-      "--write-info-json"
+      "--write-info-json",
+      "--no-simulate",
     ],
   });
   const text = await new Response(proc.stdout).text();
   await proc.exited;
+  // filenameWithExt includes directory path
   const filenameWithExt = text.trim();
   const filename = filenameWithExt.slice(0, filenameWithExt.lastIndexOf("."));
 
@@ -188,7 +191,7 @@ async function downloadFileStream(stream: FileBasedStream, config: Config) {
   for (const caption of matchingCaptions) {
     const captionsFilename = `${filename}.${caption.language}.${caption.type}`;
     const captionsResponse = await fetch(caption.url);
-    await Bun.write(`${downloadsFolder}/${captionsFilename}`, captionsResponse);
+    await Bun.write(`${captionsFilename}`, captionsResponse);
   }
 }
 
