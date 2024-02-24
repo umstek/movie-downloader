@@ -174,7 +174,7 @@ async function downloadFileStream(stream: FileBasedStream, config: Config) {
       downloadsFolder,
       url,
       "--restrict-filenames",
-      "--write-info-json",
+      // "--write-info-json",
       "--no-simulate",
     ],
   });
