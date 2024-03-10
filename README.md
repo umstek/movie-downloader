@@ -1,6 +1,6 @@
 # movie-downloader
 
-An interactive CLI movie downloader using [@movie-web](https://github.com/movie-web) providers
+An interactive CLI movie downloader using [@movie-web](https://github.com/movie-web) providers.
 
 > [!NOTE]
 > This project was created using `bun init` in bun v1.0.25.
@@ -17,12 +17,12 @@ bun install
 To run:
 
 ```bash
-bun run ./src/cli.ts
+bun dev
 ```
 
-[Screencast from 2024-02-02 20-47-31.webm](https://github.com/umstek/movie-downloader/assets/7861481/f73818e7-f115-45dc-8724-6780f9c3925b)
+You also need to have `yt-dlp` and `ffmpeg` downloaded and added to path. 
+This can currently download tv series found as files or as HLS streams.
 
-This can only download tv series in basic file formats yet, but it will help
-you find the movies/tv series and download links. Find them in `data/sources`
-and use your favorite download manager, maybe a player, or a tool like `yt-dlp`
-to download them.
+Demo:
+
+[Screencast from 2024-03-10 11-09-11.webm](https://github.com/umstek/movie-downloader/assets/7861481/b84aa136-6f4b-4d23-a6c9-720123596137)
