@@ -2,6 +2,7 @@ import type {
   FileBasedStream,
   HlsBasedStream,
   Qualities,
+  RunOutput,
   Stream,
 } from "@movie-web/providers";
 import type { MovieJob, TVJob } from "./jobs";
@@ -15,6 +16,9 @@ import {
 import { load, viaPersistence } from "./persistence";
 import { configPrompt, type Config } from "./prompts/configPrompt";
 import type { Movie, TV } from "./tmdb";
+import type { VideoFormat, VideoInfo } from "./hls";
+import filenamify from "filenamify";
+import { kebabCase } from "change-case";
 
 const qualitiesOrder: Qualities[] = [
   "4k",
@@ -24,6 +28,22 @@ const qualitiesOrder: Qualities[] = [
   "360",
   "unknown",
 ];
+const qualityToHeight: Record<Qualities, number> = {
+  "4k": 2160,
+  "1080": 1080,
+  "720": 720,
+  "480": 480,
+  "360": 360,
+  unknown: 1080,
+};
+const qualityToWidth: Record<Qualities, number> = {
+  "4k": 3840,
+  "1080": 1920,
+  "720": 1280,
+  "480": 854,
+  "360": 640,
+  unknown: 1920,
+};
 const downloadsFolder = "./downloads";
 
 const bun = Bun.which("bun");
@@ -124,20 +144,52 @@ async function downloadTV(job: TVJob) {
         continue;
       }
 
-      await downloadStream(sources.stream, config);
+      await downloadStream(
+        sources.stream,
+        {
+          kind: "tv",
+          item: tv,
+          season: seasonNo,
+          episode: episodeNo,
+          sources,
+        },
+        config
+      );
     }
   }
 }
 
-async function downloadStream(stream: Stream, config: Config) {
+type DownloadMeta =
+  | {
+      kind: "tv";
+      item: TV;
+      season: number;
+      episode: number;
+      sources: RunOutput;
+    }
+  | {
+      kind: "movie";
+      item: Movie;
+      sources: RunOutput;
+    };
+
+async function downloadStream(
+  stream: Stream,
+  meta: DownloadMeta,
+  config: Config
+) {
   if (stream.type === "hls") {
-    await downloadHlsStream(stream, config);
+    await downloadHlsStream(stream, meta, config);
   } else if (stream.type === "file") {
-    await downloadFileStream(stream, config);
+    await downloadFileStream(stream, meta, config);
   }
 }
 
-async function downloadFileStream(stream: FileBasedStream, config: Config) {
+async function downloadFileStream(
+  stream: FileBasedStream,
+  meta: DownloadMeta,
+  config: Config
+) {
   if (!config.download) {
     logFileStreamUrls(stream);
     return;
@@ -173,6 +225,18 @@ async function downloadFileStream(stream: FileBasedStream, config: Config) {
       "-P",
       downloadsFolder,
       url,
+      "-o",
+      `${
+        meta.kind === "movie"
+          ? kebabCase(
+              filenamify(meta.item.title, { replacement: " ", maxLength: 240 })
+            )
+          : `${kebabCase(
+              filenamify(meta.item.name, { replacement: " ", maxLength: 230 })
+            )}-S${meta.season.toFixed().padStart(2, "0")}-E${meta.episode
+              .toFixed()
+              .padStart(2, "0")}`
+      }.%(ext)s`,
       "--restrict-filenames",
       // "--write-info-json",
       "--no-simulate",
@@ -201,11 +265,116 @@ async function logFileStreamUrls(stream: FileBasedStream) {
   }
 }
 
-async function downloadHlsStream(stream: HlsBasedStream, config: Config) {
+async function downloadHlsStream(
+  stream: HlsBasedStream,
+  meta: DownloadMeta,
+  config: Config
+) {
   if (!config.download) {
     logHlsStreamUrls(stream);
     return;
   }
+
+  const expectedQuality = config.resolution as Qualities;
+  const betterQualities = qualitiesOrder
+    .slice(0, qualitiesOrder.indexOf(expectedQuality))
+    .reverse();
+  const worseQualities = qualitiesOrder.slice(
+    qualitiesOrder.indexOf(expectedQuality) + 1
+  );
+  const preferredQualitiesOrder = [
+    expectedQuality,
+    ...betterQualities,
+    ...worseQualities,
+  ];
+
+  const playlistUrl = stream.playlist;
+  // yt-dlp -J url dumps the json into standard output, implies simulate
+  const proc = Bun.spawn({
+    cmd: [ytdlp, "-J", playlistUrl],
+  });
+  const obj = (await new Response(proc.stdout).json()) as VideoInfo;
+  await proc.exited;
+  const match = findBestMatch(preferredQualitiesOrder, obj.formats);
+
+  const url = match.url;
+  if (!url) {
+    console.error(
+      `No matching download URLs found for ${config.resolution}. Using yt-dlp preferred quality.`
+    );
+    logHlsStreamUrls(stream);
+    // TODO download best quality
+    return;
+  }
+
+  const proc2 = Bun.spawn({
+    cmd: [
+      ytdlp,
+      "--print",
+      "filename",
+      "-P",
+      downloadsFolder,
+      url,
+      "-o",
+      `${
+        meta.kind === "movie"
+          ? kebabCase(
+              filenamify(meta.item.title, { replacement: " ", maxLength: 240 })
+            )
+          : `${kebabCase(
+              filenamify(meta.item.name, { replacement: " ", maxLength: 230 })
+            )}-S${meta.season.toFixed().padStart(2, "0")}-E${meta.episode
+              .toFixed()
+              .padStart(2, "0")}`
+      }.%(ext)s`,
+      "--restrict-filenames",
+      "--no-simulate",
+    ],
+  });
+  const text = await new Response(proc2.stdout).text();
+  await proc2.exited;
+  const filename = text.trim();
+  console.log(`Downloaded ${filename}.`);
+}
+
+function findBestMatch(wanted: Qualities[], available: VideoFormat[]) {
+  const candidates = available
+    .filter((v): v is VideoFormat & { aspect_ratio: number } =>
+      Number.isFinite(v.aspect_ratio)
+    )
+    .flatMap((v) =>
+      wanted.map((q, i) => [q, v, distance(q, v) * (1 + (i + 1) / 10)] as const)
+    );
+
+  candidates.sort((a, b) => a[2] - b[2]);
+  return candidates[0]?.[1] || available.at(-1);
+}
+
+const DEFAULT_ASPECT_RATIO = 16 / 9;
+
+function distance(
+  quality: Qualities,
+  video: VideoFormat & { aspect_ratio: number }
+) {
+  const aspectRatio = video.aspect_ratio;
+  const expectedHeight = qualityToHeight[quality];
+  const expectedWidth = qualityToWidth[quality];
+
+  if (aspectRatio >= DEFAULT_ASPECT_RATIO) {
+    // Compare width
+    return (
+      Math.abs(
+        video.width || (video.height || 0) * aspectRatio - expectedWidth
+      ) / expectedWidth
+    );
+  }
+
+  // Else, compare height
+  return (
+    Math.abs(
+      video.height || (video.width || 0) / aspectRatio - expectedHeight
+    ) / expectedHeight
+  );
 }
 
 async function logHlsStreamUrls(stream: HlsBasedStream) {
