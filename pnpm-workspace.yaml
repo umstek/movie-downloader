@@ -1,0 +1,2 @@
+allowBuilds:
+  "@movie-web/providers": false

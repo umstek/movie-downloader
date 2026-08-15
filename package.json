@@ -1,7 +1,7 @@
 {
   "name": "movie-downloader",
-  "module": "index.ts",
   "type": "module",
+  "packageManager": "pnpm@11.18.0",
   "scripts": {
     "dev": "bun ./src/cli.ts",
     "bundle": "bun build ./src/cli.ts --compile --outfile build/movie-downloader"
