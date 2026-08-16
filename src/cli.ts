@@ -20,7 +20,7 @@ import {
 } from "./paths";
 import { download } from "./download";
 
-const config = await viaPersistence(getConfigPath(), configPrompt);
+await viaPersistence(getConfigPath(), configPrompt);
 
 try {
   const jobFileNames = await readdir(getJobsPath());
@@ -28,10 +28,10 @@ try {
     type: "select",
     name: "jobFileName",
     message: "Select a job to continue, Ctrl+C to create new one.",
-    choices: jobFileNames.map((jobFileName) => {
+    choices: jobFileNames.map((fileName) => {
       return {
-        title: jobFileName,
-        value: jobFileName,
+        title: fileName,
+        value: fileName,
       };
     }),
   });

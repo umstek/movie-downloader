@@ -46,7 +46,6 @@ const qualityToWidth: Record<Qualities, number> = {
 };
 const downloadsFolder = "./downloads";
 
-const bun = Bun.which("bun");
 let ytdlp =
   process.env.YT_DLP_PATH ||
   Bun.which("yt-dlp") ||
@@ -63,7 +62,7 @@ export async function download(job: TVJob | MovieJob) {
 async function downloadMovie(job: MovieJob) {
   const config = await viaPersistence(getConfigPath(), configPrompt);
 
-  const { kind, query, tmdbId } = job;
+  const { kind, tmdbId } = job;
   const movie: Movie | undefined = await load(
     generateDetailsFilePath(kind, tmdbId)
   );
@@ -104,7 +103,7 @@ async function downloadMovie(job: MovieJob) {
 async function downloadTV(job: TVJob) {
   const config = await viaPersistence(getConfigPath(), configPrompt);
 
-  const { kind, query, tmdbId, episodes } = job;
+  const { kind, tmdbId, episodes } = job;
   const tv: TV | undefined = await load(generateDetailsFilePath(kind, tmdbId));
 
   if (!tv) {

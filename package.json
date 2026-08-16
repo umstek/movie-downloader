@@ -4,12 +4,14 @@
   "packageManager": "pnpm@11.18.0",
   "scripts": {
     "dev": "bun ./src/cli.ts",
-    "bundle": "bun build ./src/cli.ts --compile --outfile build/movie-downloader"
+    "bundle": "bun build ./src/cli.ts --compile --outfile build/movie-downloader",
+    "lint": "oxlint"
   },
   "devDependencies": {
     "@total-typescript/ts-reset": "^0.6.1",
     "@types/bun": "^1.3.14",
-    "@types/prompts": "^2.4.9"
+    "@types/prompts": "^2.4.9",
+    "oxlint": "^1.78.0"
   },
   "peerDependencies": {
     "typescript": "^5.0.0"
