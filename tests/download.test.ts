@@ -40,6 +40,12 @@ beforeEach(() => {
 });
 
 describe("findBestMatch", () => {
+  it("returns undefined when no formats are available", () => {
+    const match = findBestMatch(["1080"], []);
+
+    expect(match).toBeUndefined();
+  });
+
   it("prefers an exact match at the top of the wanted list", () => {
     const match = findBestMatch(
       ["1080", "720"],

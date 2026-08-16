@@ -259,7 +259,7 @@ async function downloadHlsStream(stream: HlsBasedStream, meta: DownloadMeta, con
   await proc.exited;
   const match = findBestMatch(preferredQualitiesOrder, obj.formats);
 
-  const url = match.url;
+  const url = match?.url;
   if (!url) {
     console.error(
       `No matching download URLs found for ${config.resolution}. Using yt-dlp preferred quality.`,
