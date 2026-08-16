@@ -11,17 +11,27 @@ An interactive CLI movie downloader using [@movie-web](https://github.com/movie-
 To install dependencies:
 
 ```bash
-bun install
+pnpm install
 ```
 
 To run:
 
 ```bash
-bun dev
+pnpm dev
 ```
 
 You also need to have `yt-dlp` and `ffmpeg` downloaded and added to path.
 This can currently download tv series found as files or as HLS streams.
+
+Development tasks:
+
+```bash
+pnpm lint         # oxlint
+pnpm format       # oxfmt (write)
+pnpm typecheck    # TypeScript 7 (tsgo native compiler)
+pnpm test         # vitest (offline, mocked)
+pnpm bundle       # compile a standalone binary into build/
+```
 
 Demo:
 
