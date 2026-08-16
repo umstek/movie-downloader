@@ -316,13 +316,13 @@ function distance(quality: Qualities, video: VideoFormat & { aspect_ratio: numbe
   if (aspectRatio >= DEFAULT_ASPECT_RATIO) {
     // Compare width
     return (
-      Math.abs(video.width || (video.height || 0) * aspectRatio - expectedWidth) / expectedWidth
+      Math.abs((video.width || (video.height || 0) * aspectRatio) - expectedWidth) / expectedWidth
     );
   }
 
   // Else, compare height
   return (
-    Math.abs(video.height || (video.width || 0) / aspectRatio - expectedHeight) / expectedHeight
+    Math.abs((video.height || (video.width || 0) / aspectRatio) - expectedHeight) / expectedHeight
   );
 }
 
