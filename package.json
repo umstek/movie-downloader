@@ -1,5 +1,6 @@
 {
   "name": "movie-downloader",
+  "version": "0.2.0",
   "type": "module",
   "scripts": {
     "dev": "bun ./src/cli.ts",
