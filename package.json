@@ -7,7 +7,9 @@
     "lint": "oxlint",
     "format": "oxfmt",
     "format:check": "oxfmt --check",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@movie-web/providers": "^2.4.13",
@@ -21,7 +23,8 @@
     "@types/prompts": "^2.4.9",
     "@typescript/native": "npm:typescript@~7.0.2",
     "oxfmt": "^0.63.0",
-    "oxlint": "^1.78.0"
+    "oxlint": "^1.78.0",
+    "vitest": "^4.1.10"
   },
   "packageManager": "pnpm@11.18.0"
 }

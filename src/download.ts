@@ -297,7 +297,7 @@ async function downloadHlsStream(stream: HlsBasedStream, meta: DownloadMeta, con
   console.log(`Downloaded ${filename}.`);
 }
 
-function findBestMatch(wanted: Qualities[], available: VideoFormat[]) {
+export function findBestMatch(wanted: Qualities[], available: VideoFormat[]) {
   const candidates = available
     .filter((v): v is VideoFormat & { aspect_ratio: number } => Number.isFinite(v.aspect_ratio))
     .flatMap((v) => wanted.map((q, i) => [q, v, distance(q, v) * (1 + (i + 1) / 10)] as const));
