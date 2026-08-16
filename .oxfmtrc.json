@@ -1,0 +1,7 @@
+{
+  "printWidth": 100,
+  "semi": true,
+  "singleQuote": false,
+  "trailingComma": "all",
+  "ignorePatterns": ["node_modules/**", "build/**", "data/**", "downloads/**", "pnpm-lock.yaml"]
+}

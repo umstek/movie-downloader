@@ -20,14 +20,7 @@ import type { VideoFormat, VideoInfo } from "./hls";
 import filenamify from "filenamify";
 import { kebabCase } from "change-case";
 
-const qualitiesOrder: Qualities[] = [
-  "4k",
-  "1080",
-  "720",
-  "480",
-  "360",
-  "unknown",
-];
+const qualitiesOrder: Qualities[] = ["4k", "1080", "720", "480", "360", "unknown"];
 const qualityToHeight: Record<Qualities, number> = {
   "4k": 2160,
   "1080": 1080,
@@ -63,24 +56,22 @@ async function downloadMovie(job: MovieJob) {
   const config = await viaPersistence(getConfigPath(), configPrompt);
 
   const { kind, tmdbId } = job;
-  const movie: Movie | undefined = await load(
-    generateDetailsFilePath(kind, tmdbId)
-  );
+  const movie: Movie | undefined = await load(generateDetailsFilePath(kind, tmdbId));
 
   if (!movie) {
     throw new Error("Movie not found.");
   }
 
   const releaseYear = Number.parseInt(movie.release_date.slice(0, 4));
-  const sources = await viaPersistence<
-    Awaited<ReturnType<typeof findDownloadSources>>
-  >(generateMovieSourceFilePath(kind, movie.id), () =>
-    findDownloadSources({
-      type: "movie",
-      releaseYear: Number.isFinite(releaseYear) ? releaseYear : 0,
-      title: movie.title,
-      tmdbId: movie.id.toString(),
-    })
+  const sources = await viaPersistence<Awaited<ReturnType<typeof findDownloadSources>>>(
+    generateMovieSourceFilePath(kind, movie.id),
+    () =>
+      findDownloadSources({
+        type: "movie",
+        releaseYear: Number.isFinite(releaseYear) ? releaseYear : 0,
+        title: movie.title,
+        tmdbId: movie.id.toString(),
+      }),
   );
 
   if (sources) {
@@ -91,9 +82,7 @@ async function downloadMovie(job: MovieJob) {
 
   if (!config.download) {
     if (sources.stream.type === "file") {
-      for (const [quality, { type, url }] of Object.entries(
-        sources.stream.qualities
-      )) {
+      for (const [quality, { type, url }] of Object.entries(sources.stream.qualities)) {
         console.log(`${quality} - ${type} - ${url}`);
       }
     }
@@ -114,26 +103,24 @@ async function downloadTV(job: TVJob) {
     const seasonNo = Number.parseInt(seasonStr.split("-")[1]);
     for (const episodeNo of episodeNos) {
       const releaseYear = Number.parseInt(tv.first_air_date.slice(0, 4));
-      const sources = await viaPersistence<
-        Awaited<ReturnType<typeof findDownloadSources>>
-      >(generateTvEpisodeSourceFilePath(kind, tv.id, seasonNo, episodeNo), () =>
-        findDownloadSources({
-          type: "show",
-          releaseYear: Number.isFinite(releaseYear) ? releaseYear : 0,
-          title: tv.name,
-          tmdbId: tv.id.toString(),
-          season: {
-            number: seasonNo,
-            tmdbId:
-              tv.seasons
-                .find((season) => season.season_number === seasonNo)
-                ?.id.toString() || "",
-          },
-          episode: {
-            number: episodeNo,
-            tmdbId: "", // XXX Hopefully, this won't matter
-          },
-        })
+      const sources = await viaPersistence<Awaited<ReturnType<typeof findDownloadSources>>>(
+        generateTvEpisodeSourceFilePath(kind, tv.id, seasonNo, episodeNo),
+        () =>
+          findDownloadSources({
+            type: "show",
+            releaseYear: Number.isFinite(releaseYear) ? releaseYear : 0,
+            title: tv.name,
+            tmdbId: tv.id.toString(),
+            season: {
+              number: seasonNo,
+              tmdbId:
+                tv.seasons.find((season) => season.season_number === seasonNo)?.id.toString() || "",
+            },
+            episode: {
+              number: episodeNo,
+              tmdbId: "", // XXX Hopefully, this won't matter
+            },
+          }),
       );
 
       if (sources) {
@@ -152,7 +139,7 @@ async function downloadTV(job: TVJob) {
           episode: episodeNo,
           sources,
         },
-        config
+        config,
       );
     }
   }
@@ -172,11 +159,7 @@ type DownloadMeta =
       sources: RunOutput;
     };
 
-async function downloadStream(
-  stream: Stream,
-  meta: DownloadMeta,
-  config: Config
-) {
+async function downloadStream(stream: Stream, meta: DownloadMeta, config: Config) {
   if (stream.type === "hls") {
     await downloadHlsStream(stream, meta, config);
   } else if (stream.type === "file") {
@@ -184,11 +167,7 @@ async function downloadStream(
   }
 }
 
-async function downloadFileStream(
-  stream: FileBasedStream,
-  meta: DownloadMeta,
-  config: Config
-) {
+async function downloadFileStream(stream: FileBasedStream, meta: DownloadMeta, config: Config) {
   if (!config.download) {
     logFileStreamUrls(stream);
     return;
@@ -198,20 +177,16 @@ async function downloadFileStream(
   const betterQualities = qualitiesOrder
     .slice(0, qualitiesOrder.indexOf(expectedQuality))
     .reverse();
-  const worseQualities = qualitiesOrder.slice(
-    qualitiesOrder.indexOf(expectedQuality) + 1
-  );
+  const worseQualities = qualitiesOrder.slice(qualitiesOrder.indexOf(expectedQuality) + 1);
   const matchingQuality =
     [expectedQuality, ...betterQualities, ...worseQualities].filter(
-      (q) => stream.qualities[q]
+      (q) => stream.qualities[q],
     )[0] || "unknown";
   console.log("Quality matched:", matchingQuality);
 
   const url = stream.qualities[matchingQuality]?.url;
   if (!url) {
-    console.error(
-      `No matching download URLs found for ${config.resolution} or below.`
-    );
+    console.error(`No matching download URLs found for ${config.resolution} or below.`);
     logFileStreamUrls(stream);
     return;
   }
@@ -227,11 +202,9 @@ async function downloadFileStream(
       "-o",
       `${
         meta.kind === "movie"
-          ? kebabCase(
-              filenamify(meta.item.title, { replacement: " ", maxLength: 240 })
-            )
+          ? kebabCase(filenamify(meta.item.title, { replacement: " ", maxLength: 240 }))
           : `${kebabCase(
-              filenamify(meta.item.name, { replacement: " ", maxLength: 230 })
+              filenamify(meta.item.name, { replacement: " ", maxLength: 230 }),
             )}-S${meta.season.toFixed().padStart(2, "0")}-E${meta.episode
               .toFixed()
               .padStart(2, "0")}`
@@ -249,7 +222,7 @@ async function downloadFileStream(
 
   const languages = ["en"];
   const matchingCaptions = stream.captions.filter(
-    (c) => c.language && languages.includes(c.language)
+    (c) => c.language && languages.includes(c.language),
   );
   for (const caption of matchingCaptions) {
     const captionsFilename = `${filename}.${caption.language}.${caption.type}`;
@@ -264,11 +237,7 @@ async function logFileStreamUrls(stream: FileBasedStream) {
   }
 }
 
-async function downloadHlsStream(
-  stream: HlsBasedStream,
-  meta: DownloadMeta,
-  config: Config
-) {
+async function downloadHlsStream(stream: HlsBasedStream, meta: DownloadMeta, config: Config) {
   if (!config.download) {
     logHlsStreamUrls(stream);
     return;
@@ -278,14 +247,8 @@ async function downloadHlsStream(
   const betterQualities = qualitiesOrder
     .slice(0, qualitiesOrder.indexOf(expectedQuality))
     .reverse();
-  const worseQualities = qualitiesOrder.slice(
-    qualitiesOrder.indexOf(expectedQuality) + 1
-  );
-  const preferredQualitiesOrder = [
-    expectedQuality,
-    ...betterQualities,
-    ...worseQualities,
-  ];
+  const worseQualities = qualitiesOrder.slice(qualitiesOrder.indexOf(expectedQuality) + 1);
+  const preferredQualitiesOrder = [expectedQuality, ...betterQualities, ...worseQualities];
 
   const playlistUrl = stream.playlist;
   // yt-dlp -J url dumps the json into standard output, implies simulate
@@ -299,7 +262,7 @@ async function downloadHlsStream(
   const url = match.url;
   if (!url) {
     console.error(
-      `No matching download URLs found for ${config.resolution}. Using yt-dlp preferred quality.`
+      `No matching download URLs found for ${config.resolution}. Using yt-dlp preferred quality.`,
     );
     logHlsStreamUrls(stream);
     // TODO download best quality
@@ -317,11 +280,9 @@ async function downloadHlsStream(
       "-o",
       `${
         meta.kind === "movie"
-          ? kebabCase(
-              filenamify(meta.item.title, { replacement: " ", maxLength: 240 })
-            )
+          ? kebabCase(filenamify(meta.item.title, { replacement: " ", maxLength: 240 }))
           : `${kebabCase(
-              filenamify(meta.item.name, { replacement: " ", maxLength: 230 })
+              filenamify(meta.item.name, { replacement: " ", maxLength: 230 }),
             )}-S${meta.season.toFixed().padStart(2, "0")}-E${meta.episode
               .toFixed()
               .padStart(2, "0")}`
@@ -338,12 +299,8 @@ async function downloadHlsStream(
 
 function findBestMatch(wanted: Qualities[], available: VideoFormat[]) {
   const candidates = available
-    .filter((v): v is VideoFormat & { aspect_ratio: number } =>
-      Number.isFinite(v.aspect_ratio)
-    )
-    .flatMap((v) =>
-      wanted.map((q, i) => [q, v, distance(q, v) * (1 + (i + 1) / 10)] as const)
-    );
+    .filter((v): v is VideoFormat & { aspect_ratio: number } => Number.isFinite(v.aspect_ratio))
+    .flatMap((v) => wanted.map((q, i) => [q, v, distance(q, v) * (1 + (i + 1) / 10)] as const));
 
   candidates.sort((a, b) => a[2] - b[2]);
   return candidates[0]?.[1] || available.at(-1);
@@ -351,10 +308,7 @@ function findBestMatch(wanted: Qualities[], available: VideoFormat[]) {
 
 const DEFAULT_ASPECT_RATIO = 16 / 9;
 
-function distance(
-  quality: Qualities,
-  video: VideoFormat & { aspect_ratio: number }
-) {
+function distance(quality: Qualities, video: VideoFormat & { aspect_ratio: number }) {
   const aspectRatio = video.aspect_ratio;
   const expectedHeight = qualityToHeight[quality];
   const expectedWidth = qualityToWidth[quality];
@@ -362,17 +316,13 @@ function distance(
   if (aspectRatio >= DEFAULT_ASPECT_RATIO) {
     // Compare width
     return (
-      Math.abs(
-        video.width || (video.height || 0) * aspectRatio - expectedWidth
-      ) / expectedWidth
+      Math.abs(video.width || (video.height || 0) * aspectRatio - expectedWidth) / expectedWidth
     );
   }
 
   // Else, compare height
   return (
-    Math.abs(
-      video.height || (video.width || 0) / aspectRatio - expectedHeight
-    ) / expectedHeight
+    Math.abs(video.height || (video.width || 0) / aspectRatio - expectedHeight) / expectedHeight
   );
 }
 

@@ -20,7 +20,7 @@ To run:
 bun dev
 ```
 
-You also need to have `yt-dlp` and `ffmpeg` downloaded and added to path. 
+You also need to have `yt-dlp` and `ffmpeg` downloaded and added to path.
 This can currently download tv series found as files or as HLS streams.
 
 Demo:
