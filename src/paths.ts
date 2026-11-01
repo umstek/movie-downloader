@@ -32,10 +32,7 @@ export function generateDetailsFilePath(kind: string, id: number): string {
  * @param movieId The ID of the movie.
  * @return The file path for the movie source.
  */
-export function generateMovieSourceFilePath(
-  kind: string,
-  movieId: number
-): string {
+export function generateMovieSourceFilePath(kind: string, movieId: number): string {
   return `data/sources/${kind}/${movieId}.json`;
 }
 
@@ -52,7 +49,7 @@ export function generateTvEpisodeSourceFilePath(
   kind: string,
   tvId: number,
   seasonNo: number,
-  episodeNo: number
+  episodeNo: number,
 ): string {
   return `data/sources/${kind}/${tvId}/s${seasonNo}/e${episodeNo}.json`;
 }

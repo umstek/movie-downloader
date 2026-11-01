@@ -44,13 +44,7 @@ export interface SearchResultsPage {
   total_results: number;
 }
 
-export async function search({
-  kind,
-  query,
-}: {
-  kind: "movie" | "tv";
-  query: string;
-}) {
+export async function search({ kind, query }: { kind: "movie" | "tv"; query: string }) {
   const url = `${baseUrl}/search/${kind}?query=${encodeURIComponent(query)}`;
 
   try {
@@ -192,13 +186,7 @@ export interface TV extends MediaItem {
   seasons: Season[];
 }
 
-export async function getDetails({
-  kind,
-  id,
-}: {
-  kind: "movie" | "tv";
-  id: number;
-}) {
+export async function getDetails({ kind, id }: { kind: "movie" | "tv"; id: number }) {
   const url = `${baseUrl}/${kind}/${id}`;
 
   try {

@@ -2,13 +2,7 @@ import prompts from "prompts";
 import filenamify from "filenamify";
 import { readdir } from "node:fs/promises";
 
-import {
-  search,
-  getDetails,
-  type SearchResultsPage,
-  type TV,
-  type Movie,
-} from "./tmdb";
+import { search, getDetails, type SearchResultsPage, type TV, type Movie } from "./tmdb";
 import { save, viaPersistence } from "./persistence";
 import { configPrompt } from "./prompts/configPrompt";
 import type { MovieJob, TVJob } from "./jobs";
@@ -20,7 +14,7 @@ import {
 } from "./paths";
 import { download } from "./download";
 
-const config = await viaPersistence(getConfigPath(), configPrompt);
+await viaPersistence(getConfigPath(), configPrompt);
 
 try {
   const jobFileNames = await readdir(getJobsPath());
@@ -28,18 +22,16 @@ try {
     type: "select",
     name: "jobFileName",
     message: "Select a job to continue, Ctrl+C to create new one.",
-    choices: jobFileNames.map((jobFileName) => {
+    choices: jobFileNames.map((fileName) => {
       return {
-        title: jobFileName,
-        value: jobFileName,
+        title: fileName,
+        value: fileName,
       };
     }),
   });
 
   if (jobFileName) {
-    const job: MovieJob | TVJob = await Bun.file(
-      `data/jobs/${jobFileName}`
-    ).json();
+    const job: MovieJob | TVJob = await Bun.file(`data/jobs/${jobFileName}`).json();
     await download(job);
     process.exit(0);
   }
@@ -68,7 +60,7 @@ const { kind, query }: { kind: "movie" | "tv"; query: string } = await prompts([
 
 let searchResponse = await viaPersistence<SearchResultsPage | undefined>(
   generateSearchFilePath(kind, query),
-  () => search({ kind, query })
+  () => search({ kind, query }),
 );
 
 const movieOrTvChoices = searchResponse?.results.map((result) => {
@@ -76,31 +68,26 @@ const movieOrTvChoices = searchResponse?.results.map((result) => {
     title:
       result.kind === "tv"
         ? `${result.name}${
-            result.name === result.original_name
-              ? ""
-              : ` = ${result.original_name}`
+            result.name === result.original_name ? "" : ` = ${result.original_name}`
           } (${result.first_air_date})`
         : `${result.title}${
-            result.title === result.original_title
-              ? ""
-              : ` = ${result.original_title}`
+            result.title === result.original_title ? "" : ` = ${result.original_title}`
           } (${result.release_date})`,
     description: result.overview,
     value: result,
   };
 });
 
-const { choice }: { choice: SearchResultsPage["results"][number] } =
-  await prompts({
-    type: "autocomplete",
-    name: "choice",
-    message: `Which item would you like to download?`,
-    choices: movieOrTvChoices,
-  });
+const { choice }: { choice: SearchResultsPage["results"][number] } = await prompts({
+  type: "autocomplete",
+  name: "choice",
+  message: `Which item would you like to download?`,
+  choices: movieOrTvChoices,
+});
 
 let detailsResponse = await viaPersistence<TV | Movie | undefined>(
   generateDetailsFilePath(kind, choice.id),
-  () => getDetails({ kind, id: choice.id })
+  () => getDetails({ kind, id: choice.id }),
 );
 if (!detailsResponse) {
   throw new Error("Unable to get details!");
@@ -121,7 +108,7 @@ if (detailsResponse.kind === "movie") {
       maxLength: 100,
       replacement: "-",
     })}.json`,
-    movieJob
+    movieJob,
   );
 }
 
@@ -147,17 +134,14 @@ if (detailsResponse.kind === "tv") {
         type: "multiselect",
         name: `season-${season.season_number}`,
         message: `Which episodes would you like to download for ${season.name} (${season.season_number})?`,
-        choices: Array.from(
-          { length: season.episode_count },
-          (_, i) => i + 1
-        ).map((episodeNo) => {
+        choices: Array.from({ length: season.episode_count }, (_, i) => i + 1).map((episodeNo) => {
           return {
             title: `Episode ${episodeNo}`,
             value: episodeNo,
           };
         }),
       };
-    })
+    }),
   );
 
   const jobName = `${tv.name} at ${new Date().toISOString()}`;
@@ -173,6 +157,6 @@ if (detailsResponse.kind === "tv") {
       maxLength: 100,
       replacement: "-",
     })}.json`,
-    tvJob
+    tvJob,
   );
 }

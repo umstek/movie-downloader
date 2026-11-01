@@ -1,0 +1,13 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "promise"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "error"
+  },
+  "env": {
+    "node": true,
+    "browser": true
+  },
+  "ignorePatterns": ["node_modules/**", "build/**", "data/**", "downloads/**"]
+}

@@ -3,7 +3,6 @@ import {
   makeStandardFetcher,
   targets,
   type RunnerOptions,
-  type RunOutput,
 } from "@movie-web/providers";
 
 const fetcher = makeStandardFetcher(fetch);

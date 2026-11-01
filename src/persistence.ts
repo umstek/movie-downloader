@@ -1,7 +1,4 @@
-export async function viaPersistence<T>(
-  path: string,
-  func: () => Promise<T>
-): Promise<T> {
+export async function viaPersistence<T>(path: string, func: () => Promise<T>): Promise<T> {
   const file = Bun.file(path);
   if (await file.exists()) {
     return file.json();
