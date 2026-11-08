@@ -27,5 +27,5 @@
     "oxlint": "^1.78.0",
     "vitest": "^4.1.10"
   },
-  "packageManager": "pnpm@11.18.0"
+  "packageManager": "pnpm@12.18.0"
 }
